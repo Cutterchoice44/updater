@@ -266,3 +266,50 @@ document.addEventListener("DOMContentLoaded", () => {
     observer.observe(userListEl, { childList: true });
   }
 });
+// ─────────────────────────────────────────────────────────────────────────────
+// 5) INITIALIZE ON DOM READY
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  // a) Load everything
+  fetchLiveNow();
+  fetchWeeklySchedule();
+  fetchNowPlayingArchive();
+
+  // b) Auto-refresh
+  setInterval(fetchLiveNow,          30000);
+  setInterval(fetchNowPlayingArchive, 30000);
+
+  // c) Mixcloud shuffle & mobile removal
+  if (isMobile) {
+    document.querySelector(".mixcloud")?.remove();
+  } else {
+    document.querySelectorAll("iframe.mixcloud-iframe")
+      .forEach(ifr => ifr.src = ifr.dataset.src);
+    shuffleIframesDaily();
+    const mc = document.createElement("script");
+    mc.src   = "https://widget.mixcloud.com/widget.js";
+    mc.async = true;
+    document.body.appendChild(mc);
+  }
+
+  // d) Pop-out player
+  document.getElementById("popOutBtn")?.addEventListener("click", /* … */);
+
+  // e) Ghost‐ and duplicate‐user purge
+  const listEl = document.querySelector(".rc-user-list");
+  if (listEl) {
+    const purge = () => {
+      const seen = new Set();
+      listEl.querySelectorAll("*").forEach(el => {
+        const name = el.textContent.trim();
+        if (!name || seen.has(name)) el.remove();
+        else seen.add(name);
+      });
+    };
+    // run once immediately…
+    purge();
+    // …and again whenever new nodes arrive
+    new MutationObserver(purge)
+      .observe(listEl, { childList: true });
+  }
+});
