@@ -69,7 +69,7 @@ async function fetchLiveNow() {
   }
 }
 
-// 3b) Weekly schedule
+// 3b) Weekly schedule (fills #schedule-container)
 async function fetchWeeklySchedule() {
   const container = document.getElementById("schedule-container");
   if (!container) return;
@@ -147,7 +147,7 @@ async function fetchWeeklySchedule() {
   }
 }
 
-// 3c) Now Playing Archive
+// 3c) Now Playing Archive (fills #now-archive)
 async function fetchNowPlayingArchive() {
   try {
     const { result } = await rcFetch(`/station/${STATION_ID}/schedule/live`);
@@ -173,7 +173,7 @@ async function fetchNowPlayingArchive() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4) ADMIN & UI ACTIONS
+// 4) ADMIN & UI ACTIONS (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 function addMixcloud()    { /* … */ }
 function deleteMixcloud() { /* … */ }
@@ -204,10 +204,10 @@ function closeChatModal() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5) INITIALIZE ON DOM READY
+// 5) INITIALIZE ON DOM READY + SOCKET.IO CHAT
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  // a) Load everything
+  // a) Load core data
   fetchLiveNow();
   fetchWeeklySchedule();
   fetchNowPlayingArchive();
@@ -243,16 +243,20 @@ document.addEventListener("DOMContentLoaded", () => {
     w.document.close();
   });
 
-  // e) Ghost-user & duplicate purge (runs every second)
-  setInterval(() => {
-    const seen = new Set();
-    document.querySelectorAll(".rc-user-list > *").forEach(el => {
-      const name = el.textContent.trim();
-      if (!name || seen.has(name)) {
-        el.remove();
-      } else {
-        seen.add(name);
-      }
+  // e) Socket.IO-driven chat user list (filtered)
+  const panel = document.querySelector('.rc-user-list');
+  if (panel && window.io) {
+    const socket = io('https://app.radiocult.fm', {
+      transports: ['websocket'],
+      query: { station: STATION_ID, apiKey: API_KEY }
     });
-  }, 1000);
+    socket.on('user_list', users => {
+      const seen = new Set();
+      panel.innerHTML = users
+        .map(u => u.name?.trim())
+        .filter(n => n && !seen.has(n) && seen.add(n))
+        .map(n => `<div>${n}</div>`)
+        .join('');
+    });
+  }
 });
