@@ -215,8 +215,6 @@ function closeChatModal() {
   }
 }
 
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 5) INITIALIZE ON DOM READY
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,4 +254,15 @@ document.addEventListener("DOMContentLoaded", () => {
       </style></head><body><iframe src="${src}" allow="autoplay"></iframe></body></html>`);
     w.document.close();
   });
+
+  // e) Ghost-user filter: remove any empty-name entries from the chat user list
+  const userListEl = document.querySelector('.rc-user-list');
+  if (userListEl) {
+    const observer = new MutationObserver(() => {
+      Array.from(userListEl.children).forEach(li => {
+        if (!li.textContent.trim()) li.remove();
+      });
+    });
+    observer.observe(userListEl, { childList: true });
+  }
 });
