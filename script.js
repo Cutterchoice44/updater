@@ -69,7 +69,7 @@ async function fetchLiveNow() {
   }
 }
 
-// 3b) Weekly schedule (exactly your existing code)
+// 3b) Weekly schedule
 async function fetchWeeklySchedule() {
   const container = document.getElementById("schedule-container");
   if (!container) return;
@@ -147,45 +147,33 @@ async function fetchWeeklySchedule() {
   }
 }
 
-// 3c) Default‐playlist “Now Playing” (fills #now-archive)
+// 3c) Now Playing Archive
 async function fetchNowPlayingArchive() {
   try {
     const { result } = await rcFetch(`/station/${STATION_ID}/schedule/live`);
     const { metadata: md = {}, content: ct = {} } = result;
     const el = document.getElementById("now-archive");
 
-    // 1) If there's a real track title, always use that
     if (md.title) {
-      const display = md.artist
-        ? `${md.artist} – ${md.title}`
-        : md.title;
+      const display = md.artist ? `${md.artist} – ${md.title}` : md.title;
       el.textContent = `Now Playing: ${display}`;
-    }
-    // 2) If metadata filename exists, use it
-    else if (md.filename) {
+    } else if (md.filename) {
       el.textContent = `Now Playing: ${md.filename}`;
-    }
-    // 3) Fall back to any content title (scheduled event)
-    else if (ct.title) {
+    } else if (ct.title) {
       el.textContent = `Now Playing: ${ct.title}`;
-    }
-    // 4) Or the playlist name
-    else if (ct.name) {
+    } else if (ct.name) {
       el.textContent = `Now Playing: ${ct.name}`;
-    }
-    // 5) Last resort
-    else {
+    } else {
       el.textContent = "Now Playing: Unknown Show";
     }
   } catch (err) {
     console.error("Archive‐now fetch error:", err);
-    document.getElementById("now-archive").textContent =
-      "Unable to load archive show";
+    document.getElementById("now-archive").textContent = "Unable to load archive show";
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4) ADMIN & UI ACTIONS (unchanged)
+// 4) ADMIN & UI ACTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 function addMixcloud()    { /* … */ }
 function deleteMixcloud() { /* … */ }
@@ -255,14 +243,16 @@ document.addEventListener("DOMContentLoaded", () => {
     w.document.close();
   });
 
-  // e) Ghost-user filter: remove any empty-name entries from the chat user list
-  const userListEl = document.querySelector('.rc-user-list');
-  if (userListEl) {
-    const observer = new MutationObserver(() => {
-      Array.from(userListEl.children).forEach(li => {
-        if (!li.textContent.trim()) li.remove();
-      });
+  // e) Ghost-user & duplicate purge (runs every second)
+  setInterval(() => {
+    const seen = new Set();
+    document.querySelectorAll(".rc-user-list > *").forEach(el => {
+      const name = el.textContent.trim();
+      if (!name || seen.has(name)) {
+        el.remove();
+      } else {
+        seen.add(name);
+      }
     });
-    observer.observe(userListEl, { childList: true });
-  }
+  }, 1000);
 });
