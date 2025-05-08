@@ -69,7 +69,7 @@ async function fetchLiveNow() {
   }
 }
 
-// 3b) Weekly schedule (fills #schedule-container)
+// 3b) Weekly schedule (exactly your existing code)
 async function fetchWeeklySchedule() {
   const container = document.getElementById("schedule-container");
   if (!container) return;
@@ -147,28 +147,40 @@ async function fetchWeeklySchedule() {
   }
 }
 
-// 3c) Now Playing Archive (fills #now-archive)
+// 3c) Default‐playlist “Now Playing” (fills #now-archive)
 async function fetchNowPlayingArchive() {
   try {
     const { result } = await rcFetch(`/station/${STATION_ID}/schedule/live`);
     const { metadata: md = {}, content: ct = {} } = result;
     const el = document.getElementById("now-archive");
 
+    // 1) If there's a real track title, always use that
     if (md.title) {
-      const display = md.artist ? `${md.artist} – ${md.title}` : md.title;
+      const display = md.artist
+        ? `${md.artist} – ${md.title}`
+        : md.title;
       el.textContent = `Now Playing: ${display}`;
-    } else if (md.filename) {
+    }
+    // 2) If metadata filename exists, use it
+    else if (md.filename) {
       el.textContent = `Now Playing: ${md.filename}`;
-    } else if (ct.title) {
+    }
+    // 3) Fall back to any content title (scheduled event)
+    else if (ct.title) {
       el.textContent = `Now Playing: ${ct.title}`;
-    } else if (ct.name) {
+    }
+    // 4) Or the playlist name
+    else if (ct.name) {
       el.textContent = `Now Playing: ${ct.name}`;
-    } else {
+    }
+    // 5) Last resort
+    else {
       el.textContent = "Now Playing: Unknown Show";
     }
   } catch (err) {
     console.error("Archive‐now fetch error:", err);
-    document.getElementById("now-archive").textContent = "Unable to load archive show";
+    document.getElementById("now-archive").textContent =
+      "Unable to load archive show";
   }
 }
 
@@ -204,10 +216,10 @@ function closeChatModal() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5) INITIALIZE ON DOM READY + SOCKET.IO CHAT
+// 5) INITIALIZE ON DOM READY
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  // a) Load core data
+  // a) Load everything
   fetchLiveNow();
   fetchWeeklySchedule();
   fetchNowPlayingArchive();
@@ -243,20 +255,14 @@ document.addEventListener("DOMContentLoaded", () => {
     w.document.close();
   });
 
-  // e) Socket.IO-driven chat user list (filtered)
-  const panel = document.querySelector('.rc-user-list');
-  if (panel && window.io) {
-    const socket = io('https://app.radiocult.fm', {
-      transports: ['websocket'],
-      query: { station: STATION_ID, apiKey: API_KEY }
+  // e) Ghost-user filter: remove any empty-name entries from the chat user list
+  const userListEl = document.querySelector('.rc-user-list');
+  if (userListEl) {
+    const observer = new MutationObserver(() => {
+      Array.from(userListEl.children).forEach(li => {
+        if (!li.textContent.trim()) li.remove();
+      });
     });
-    socket.on('user_list', users => {
-      const seen = new Set();
-      panel.innerHTML = users
-        .map(u => u.name?.trim())
-        .filter(n => n && !seen.has(n) && seen.add(n))
-        .map(n => `<div>${n}</div>`)
-        .join('');
-    });
+    observer.observe(userListEl, { childList: true });
   }
 });
